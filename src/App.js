@@ -14,6 +14,13 @@ export const ACTIONS = {
 function reducer(state, { type, payload }) {
   switch (type) {
     case ACTIONS.ADD_DIGIT:
+      if (state.overwrite) {
+        return {
+          ...state,
+          currentOperand: payload.digit,
+          overwrite,
+        };
+      }
       if (payload.digit === "0" && state.currentOperand === "0") return state;
       if (payload.digit === "." && state.currentOperand.includes("."))
         return state;
@@ -25,6 +32,14 @@ function reducer(state, { type, payload }) {
       if (state.currentOperand == null && state.previousOperand == null) {
         return state;
       }
+
+      if (state.currentOperand == null) {
+        return {
+          ...state,
+          operation: payload.operation,
+        };
+      }
+
       if (state.previousOperand == null) {
         return {
           ...state,
@@ -33,10 +48,58 @@ function reducer(state, { type, payload }) {
           currentOperand: null,
         };
       }
+      return {
+        ...state,
+        previousOperand: evaluate(state),
+        operation: payload.operation,
+        currentOperand: null,
+      };
     case ACTIONS.CLEAR:
       return {};
+    // delete function not implemented
+    case ACTIONS.EVALUATE:
+      if (
+        state.operation == null ||
+        state.currentOperand == null ||
+        state.previousOperand == null
+      ) {
+        return state;
+      }
+
+      return {
+        ...state,
+        overwrite: true,
+        previousOperand: null,
+        operation: null,
+        currentOperand: evaluate(state),
+      };
   }
 }
+
+function evaluate({ currentOperand, previousOperand, operation }) {
+  const prev = parseFloat(previousOperand);
+  const current = parseFloat(currentOperand);
+  if (isNaN(prev) || isNaN(current)) return "";
+  let computation = "";
+  switch (operation) {
+    case "+":
+      computation = prev + current;
+      break;
+
+    case "-":
+      computation = prev - current;
+      break;
+    case "*":
+      computation = prev * current;
+      break;
+    case "÷":
+      computation = prev / current;
+      break;
+  }
+  return computation.toString();
+}
+
+// Integer formatter not implemented
 
 function App() {
   const [{ currentOperand, previousOperand, operation }, dispatch] = useReducer(
@@ -62,7 +125,6 @@ function App() {
       </button>
 
       <button id="del">DEL</button>
-      {/* <button>÷</button> */}
       <OperationButton digit="÷" dispatch={dispatch} />
       <DigitButton digit="1" dispatch={dispatch} />
       <DigitButton digit="2" dispatch={dispatch} />
@@ -78,7 +140,12 @@ function App() {
       <OperationButton digit="-" dispatch={dispatch} />
       <DigitButton digit="." dispatch={dispatch} />
       <DigitButton digit="0" dispatch={dispatch} />
-      <button className="span-equal">=</button>
+      <button
+        className="span-equal"
+        onClick={() => dispatch({ type: ACTIONS.EVALUATE })}
+      >
+        =
+      </button>
     </div>
   );
 }
